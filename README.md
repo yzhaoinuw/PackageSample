@@ -1,161 +1,49 @@
 ## Overview
 This is a sample repo to show the structure my MFJ repo (renamed here as "PackageSample") and how to set up the package so that a user can install the package to their Python libraries. There are two concepts. The first is the repo, you can use git clone to download this repo to your local directory. The second is the actual Python package that will be installed to your Python libraries. Since I did not publish the MFJ package on PyPI, which is a store where you can download Python package from, you cannot pip install the MFJ package right away. You need to first clone the repo from GitHub to your computer, then install the package locally. The steps are:
 
-1. Open terminal or command line
-2. Inside terminal, clone the repo from GitHub to directory of your choice, for example, /Desktop. This can be done by typing 
+1. It is recommended that you work in a virtual environment. You can use Anaconda to create an enviroment. If you don't have Anaconda, you can download it [here](https://docs.anaconda.com/anaconda/install/). Then follow the [instructions](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-with-commands) to create an enviroment. It is recommended that you specify the Python version to be 3.6 or later.
+
+2. In terminal or command line, go to the directory to which you want to download the repo, for example, Desktop/. 
+```shell
+cd Desktop/
 ```
-git clone 
+
+3. Clone the repo from GitHub to directory of your choice, for example, /Desktop.  This can be done by typing 
+```shell
+git clone git@github.com:yzhaoinuw/PackageSample.git
 ```
 
-
-
-
-
-
-
-
-
-1. Download this repo to your working directory. 
-2. Create/Open a virtual environment.
-3. cd to this repo.
-4. In terminal, type 
+4. Go to this repo
+```shell
+cd PackageSample-master/
 ```
+or the actual name of the repo folder appeared on your Desktop.
+
+5. type 
+```shell
 pip install .
 ```
-This will install the package into PYTHONPATH, while also installing all the required packages.
+Now Python will run setup.py and install the MFJ package into your Python library.
 
-## Example Usage
 
-### Task 1
-Let's parse a name using the name_parser module. A name can be entered in any of the following five formats:
-1. Last, First Middle, Suffix
-2. Last First Middle Sufix
-3. Last Suffix, First Middle
-4. Last, First Middle Suffix
-5. First Middle Last Suffix
+### setup.py
+Since setup.py is the file that governs the pip install process, let's look at what it does. First notice that in the repo there are three folders, "MFJ", "experiments", and "tests", along with several files. Only "MFJ" comprise the actual Python package that will be installed. Inside setup.py, you will notice a line which says "packages=find_packages()". This is telling Python to install, recursively, any folder that has an "__init__.py" file as a package. So, put an "__init__.py" file inside the folders which you want to be installed as packages. __init__.py can be blank. In our case, we only put an __init__.py in "MFJ" folder. But inside "MFJ" folder, we also want "shelter_detection" folder to be included in the pack, so another __init__.py is put inside "shelter_detection". There may be other ways to specify which folders to be installed as packages other than relying on __init__.py. For example you may be able to use the "include" parameter of find_packages. See the "setup.py" Section of this [documentation](https://packaging.python.org/guides/distributing-packages-using-setuptools/#setup-py) for more.
 
-The parsing results will be presented in a dictionary, where the keys are the name parts and the values are tuples of corresponding names followed by a confidence score. Note during parsing, the names are lower-cased, and as such, the results are presented in lower case.
+Next, notice that inside "MFJ" there is a folder called "model", where the neural network model for the name parser is stored. I want to include the model as data in the package, but not as a package, because the model only serves as data that the actual name parser package uses. Similarly, I also want the SQL databse inside shelter_detection/resources/ to be included as data to the package. The line "include_package_data=True" in setup.py can do just that, with the help of a separate file called "MANIFEST.in". setup.py will install the content specified inside MANIFEST.in as data to the package.
 
-```python
-from MFJ.name_parser import NameParser
+If your package is built on any third party Python packages, you will need to list the dependencies  of your package. So when a user wants to download your package, your package should first download its dependencies first for the user if they don't already have. This can be achieved by the line "install_requires=required" and a associated "requirements.txt" file.
 
-# Chose the model to load, or you can leave the model name blank to use the default model,
-# which is trained on over two million person's names and over four hundred thousand business names.
- 
-#model_name = 'name_parser_elmo_noncrf'
-#parser = NameParser(model_name)
-parser = NameParser()
-
-#name = "Donald Enrico De la Rosa"
-#name = "Mary-Ann Robinson"
-#name = "capital offense"
-name = "Alexis Franco Charles Van der Whorf II"
-
-print (parser.parse_name(name))
-
-# output
-# {'FIRST': ['alexis', 0.9877199530601501], 'MIDDLE': ['franco charles', 0.4598486125469208], 'LAST': ['van der whorf', 0.7886182069778442], 'SUFFIX': ['ii', 0.9922061562538147]}
+### MANIFEST.in
+MANIFEST.in allows you to pinpoint what to be included as data to the package. So in our case, we put 
 ```
-
-### Task 2
-Let's try to query an address against a homeless shelter directory to determine if the address belongs to a shelter. 
-
-```python
-from MFJ.shelter_detection import query_address
-
-db = query_address.ConnectDB()
-
-# You can either enter the address as a string,
-address = '1000 N 19th St, St.Louis, MO 63016'
-
-# or enter the address as a dictionary that include four fileds: 'StateName', 'ZipCode', 'PlaceName',
-# and 'StreetAddress'. The name of the four fields must match exactly. If any field is not available,
-# you can leave it out or enter a empty string as its value.
-
-address = {'StateName':'Missouri', 'ZipCode':'63016',
-           'PlaceName':'St.Louis', 'StreetAddress':'1000 N 19th St'}
-
-print (db.is_shelter(address))
-
-# output
-# True
-
+recursive-include MFJ/model/ *.pt weights*
+include MFJ/shelter_detection/resources/*.db
 ```
+in MANEFEST.in. You can find more usage of MANIFEST.in in this [documentation](https://packaging.python.org/guides/using-manifest-in/).
 
-## Updating a name parser model
-If you find the name parser model struggles to parse some group of names, for example, person names from a particular ethnic group, you can update the model on an annotated name dataset of that group. You can also create a business name dataset to imporve the name parser's performance on recognizing business names. Make sure you only put person's name person name data and business name in business data and do NOT mix the two since the annotation methodology is different for the two. There are three steps you need to follow to continue train a name parser model. 
 
-1. Create person's name dataset
-First, prepare a csv file of the names you would like the model to learn. The csv file should have only ONE column and should NOT have a header. Each row of the csv file is a person's full name presented in this order: last, first, middle, suffix. Each name part is separated by '&'. So for example, the content of the csv file may look like this:
+### requirements.txt
+List line by line what your dependent thrid party packages are and specify the version requirements. You don't need to include built-in libraries such as math. 
 
-```
-De La Rosa&Maria&Ana&
-Howard&ronald&julian&jr
-morgan&chase&randal&
-barber&luke&cameron&
-turner&bob&john&
-potter&harry&gary&II
-```
-You don't need to worry about upper-casing or lower-casing the names. Once you have the name csv file ready, cd to the path of the MFJ repo, then run the following python script from command line:
 
-```shell
-export CSV_PATH=/path/to/csv
-export DATASET_PATH=/path/to/dataset/folder
-python ./experiments/create_dataset.py \
-    $CSV_PATH \
-    $DATASET_PATH \
-    --name_type person_name
-``` 
-This command will make train.txt, dev.txt, and test.txt from the csv file in the DATASET_PATH folder. 
-
-2. Create business name dataset
-To create dataset for new business names, create a csv file that has only one column with no header. Put in each row a business name. For example:
-
-```
-apple inc
-banana inc
-orange co
-``` 
-then, run in command line 
-
-```shell
-export CSV_PATH=/path/to/csv
-export DATASET_PATH=/path/to/dataset/folder
-
-python ./experiments/create_dataset.py \
-    $CSV_PATH \
-    $DATASET_PATH \
-    --name_type entity_name
-```
-You can create person's name dataset right after creating business name dataset or vice versa, using the above command. Make sure to use the same DATA_PATH for both types of names. They will get combined in the dataset. A ratio of at least 100:1 person name to business name ratio is recommended, meaning if you prove a hundred thousand person's names to the dataset, then limit the number of business name under one thousand. 
-
-3. Run continue training
-Once you have the dataset created, the nest step is to continue training the name parser on the dataset. In command line, 
-
-```shell
-export LOAD_MODEL_PATH=/path/to/current/model
-export DATASET_PATH=/path/to/dataset
-export SAVE_MODEL_PATH=/path/to/new/model
-
-python experiments/continue_train_model.py $LOAD_MODEL_PATH \
-    DATASET_PATH \
-    --save_model_path /home/yue/python_projects/MFJ/model/name_parser_elmo_noncrf2/
-``` 
-The *SAVE_MODEL_PATH* argument is optional. But it is recommended to provide a *SAVE_MODEL_PATH* that is different from *LOAD_MODEL_PATH*. This way, your new model will be save separately. Otherwise, the new model will overwrite the previous model. If you want to use your new model in the name-parser module, you need to cd to the repo in command line and reinstall this package. One way to do this is
-
-```shell
-pip uninstall MFJ 
-pip install .
-```
-
-## Update the shelter address data
-The current database is built from the homeless shelter address listed on this [online directory](https://www.homelessshelterdirectory.org/). The directory is crowdsourced and may be updated from time to time. To keep the database up to date, you can re-scrape the directory and build an updated database. To do this, in command line, cd to the MFJ repo and then run the following python script
-
-```shell
-python ./experiments/update_db.py
-``` 
-All the actions will be taken care of in sequence: first the old data will be bundled; then the directory will be scraped; next, csv files are created from the scraped data; last, a new database will be created from the csv files. The whole update process may take up to 5 hours, depending on your internet connection, number of available cores on your cpu. If you want to use the updated database, you need to reinstall this package.
-
-## Run test files
-Some python scripts have been prepared to run tests for Task 1 and Task 2. These python scripts are located in tests/ directory. "test_shelter_detection.py" can be run to test shelter detection on the Wisconsin data (wi_extract_addr.csv). "test_name_parser.py" can be run to test name parsing on in-tyler-names files in the IN data.
 
