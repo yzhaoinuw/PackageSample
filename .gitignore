@@ -2,4 +2,4 @@
 MFJ.egg-info
 MFJ/__pycache__/
 *.pyc
-*.DS_Store
+.DS_Store
