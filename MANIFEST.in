@@ -1,0 +1,2 @@
+recursive-include MFJ/model/ *.pt weights*
+include MFJ/shelter_detection/resources/*.db

@@ -1,0 +1,4 @@
+#MFJ/model
+MFJ.egg-info
+MFJ/__pycache__/
+*.pyc
